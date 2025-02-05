@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Panel</title>
+</head>
+<body>
+    <h1>Admin Panel</h1>
+    <table border="1">
+        <tr>
+            <th>ID</th>
+            <th>Message</th>
+            <th>Admin Reply</th>
+            <th>Action</th>
+        </tr>
+        {% for message in messages %}
+        <tr>
+            <td>{{ message[0] }}</td>
+            <td>{{ message[1] }}</td>
+            <td>{{ message[2] if message[2] else "No reply yet" }}</td>
+            <td>
+                <form action="/admin/reply" method="post">
+                    <input type="hidden" name="message_id" value="{{ message[0] }}">
+                    <textarea name="admin_reply" placeholder="Type your reply here..."></textarea>
+                    <button type="submit">Reply</button>
+                </form>
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+</body>
+</html>
