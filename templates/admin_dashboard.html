@@ -4,237 +4,218 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard</title>
-    <script src="https://cdn.socket.io/4.0.1/socket.io.min.js"></script>
     <style>
         body {
             font-family: Arial, sans-serif;
-            background-color: #f5f5f5;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            height: 100vh;
+        }
+        .sidebar {
+            width: 250px;
+            background-color: #2c3e50;
+            color: white;
+            padding: 20px;
             display: flex;
             flex-direction: column;
-            height: 100vh;
+            justify-content: space-between;
+        }
+        .sidebar h2 {
+            margin-top: 0;
+        }
+        .sidebar ul {
+            list-style: none;
+            padding: 0;
+        }
+        .sidebar ul li {
+            margin: 15px 0;
+        }
+        .sidebar ul li a {
+            color: white;
+            text-decoration: none;
+            font-size: 18px;
+        }
+        .sidebar ul li a:hover {
+            text-decoration: underline;
+        }
+        .sidebar .logout-btn {
+            background-color: #e74c3c;
+            color: white;
+            border: none;
+            padding: 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            text-align: center;
+            font-size: 16px;
+        }
+        .sidebar .logout-btn:hover {
+            background-color: #c0392b;
+        }
+        .main-content {
+            flex: 1;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .app-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background-color: #34495e;
+            color: white;
+            padding: 10px 20px;
+        }
+        .app-bar h2 {
             margin: 0;
         }
-
-        #messages {
-            flex-grow: 1;
-            display: grid;
-            grid-template-columns: 1fr;
-            grid-gap: 15px;
-            padding: 20px;
-            background-color: #ffffff;
-            border-radius: 10px;
-            margin: 20px;
-            overflow-y: auto;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-            height: 75%;
+        .request {
+            background-color: white;
+            padding: 15px;
+            margin-bottom: 10px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
-
-        .message {
-            display: inline-block;
-            max-width: 70%;
-            padding: 12px;
-            border-radius: 15px;
-            font-size: 16px;
-            margin-bottom: 15px;
-            position: relative;
+        .request h3 {
+            margin-top: 0;
         }
-
-        .sender {
-            background-color: #25D366;
-            color: white;
-            align-self: flex-start;
-            border-top-left-radius: 0;
-            border-bottom-right-radius: 0;
-        }
-
-        .receiver {
-            background-color: #e1e1e1;
-            color: black;
-            align-self: flex-end;
-            border-top-right-radius: 0;
-            border-bottom-left-radius: 0;
-        }
-
-        .admin-reply {
-            margin-top: 10px;
-            padding: 10px;
-            font-size: 14px;
-            color: #4d4d4d;
-            background-color: #d6d6d6;
-            border-radius: 10px;
-        }
-
-        .reply-btn {
-            position: absolute;
-            top: 10px;
-            right: 10px;
+        .request button {
             background-color: #25D366;
             color: white;
             border: none;
-            border-radius: 5px;
-            padding: 5px 10px;
+            padding: 8px 16px;
+            border-radius: 4px;
             cursor: pointer;
-            font-size: 14px;
         }
-
-        .reply-btn:hover {
+        .request button:hover {
             background-color: #128C7E;
         }
-
-        .forwarded-message {
-            background-color: #DCF8C6;
-            border-radius: 10px;
-            margin-top: 10px;
-            padding: 10px;
-            font-size: 14px;
+        .user-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
         }
-
-        .forwarded-message .message {
-            font-size: 12px;
-            color: #888;
+        .user-table th, .user-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
         }
-
-        #input-container {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 10px 20px;
-            background-color: #fff;
-            border-top: 1px solid #ddd;
+        .user-table th {
+            background-color: #34495e;
+            color: white;
         }
-
-        input[type="text"] {
-            width: 80%;
-            padding: 10px;
-            font-size: 16px;
-            border-radius: 20px;
-            border: 1px solid #ccc;
+        .user-table tr:hover {
+            background-color: #f1f1f1;
         }
-
-        button {
-            padding: 10px;
-            background-color: #25D366;
+        .user-table button {
+            background-color: #3498db;
             color: white;
             border: none;
-            border-radius: 20px;
-            cursor: pointer;
-            margin-left: 10px;
-        }
-
-        a {
-            font-size: 14px;
-            color: #25D366;
-            text-decoration: none;
-            margin-left: 20px;
-        }
-
-        #messages::-webkit-scrollbar {
-            width: 8px;
-        }
-
-        #messages::-webkit-scrollbar-thumb {
-            background: #ccc;
+            padding: 6px 12px;
             border-radius: 4px;
+            cursor: pointer;
         }
-
-        @media (max-width: 768px) {
-            #messages {
-                grid-template-columns: 1fr;
-            }
+        .user-table button:hover {
+            background-color: #2980b9;
         }
     </style>
 </head>
 <body>
-    <h2 style="text-align: center; color: #25D366; margin-top: 20px;">Admin Dashboard</h2>
+    <!-- Sidebar -->
+    <div class="sidebar">
+        <div>
+            <h2>Admin Dashboard</h2>
+            <ul>
+                <li><a href="{{ url_for('admin_dashboard') }}">Pending Requests</a></li>
+                <li><a href="{{ url_for('approved_requests') }}">Approved Requests</a></li>
+                <li><a href="{{ url_for('view_all_users') }}">View All Users</a></li>
+            </ul>
+        </div>
+        <button class="logout-btn" onclick="window.location.href='{{ url_for('logout') }}'">Logout</button>
+    </div>
 
-    <div id="messages">
-        {% for message in messages %}
-            <div class="message receiver" data-id="{{ message.id }}">
-                <strong>{{ message.username }}:</strong><br>
-                {{ message.message }}
-                <div class="admin-reply-container" id="reply-{{ message.id }}">
-                    {% if message.admin_reply %}
-                        <div class="admin-reply">
-                            <strong>Admin Reply:</strong><br>{{ message.admin_reply }}
-                        </div>
-                    {% endif %}
+    <!-- Main Content -->
+    <div class="main-content">
+        <!-- App Bar -->
+        <div class="app-bar">
+            <h2>Admin Dashboard</h2>
+        </div>
+
+        <!-- Dynamic Content -->
+        {% if pending %}
+            <h3>Pending Requests</h3>
+            {% for req in requests %}
+                <div class="request">
+                    <h3>Complaint: {{ req.complaint.title }}</h3>
+                    <p>User: {{ req.user.username }}</p>
+                    <form action="{{ url_for('approve_request', request_id=req.id) }}" method="POST">
+                        <button type="submit">Approve Request</button>
+                    </form>
                 </div>
-                <button class="reply-btn">Reply</button>
-            </div>
-        {% endfor %}
+            {% endfor %}
+        {% elif show_users %}
+            <h3>All Users</h3>
+            <table class="user-table">
+                <thead>
+                    <tr>
+                        <th>Username</th>
+                        <th>Email</th>
+                        <th>Role</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in users %}
+                        <tr>
+                            <td>{{ user.username }}</td>
+                            <td>{{ user.email }}</td>
+                            <td>{{ user.role }}</td>
+                            <td>
+                                <button onclick="window.location.href='{{ url_for('edit_user', user_id=user.id) }}'">Edit</button>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% elif manage_admins %}
+            <h3>Manage Admins</h3>
+            <table class="user-table">
+                <thead>
+                    <tr>
+                        <th>Username</th>
+                        <th>Email</th>
+                        <th>Role</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in users %}
+                        <tr>
+                            <td>{{ user.username }}</td>
+                            <td>{{ user.email }}</td>
+                            <td>{{ user.role }}</td>
+                            <td>
+                                {% if user.role == 'admin' %}
+                                    <button onclick="window.location.href='{{ url_for('demote_admin', user_id=user.id) }}'">Demote</button>
+                                {% else %}
+                                    <button onclick="window.location.href='{{ url_for('promote_admin', user_id=user.id) }}'">Promote</button>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <h3>Approved Requests</h3>
+            {% for req in requests %}
+                <div class="request">
+                    <h3>Complaint: {{ req.complaint.title }}</h3>
+                    <p>User: {{ req.user.username }}</p>
+                    <a href="{{ url_for('chat', request_id=req.id) }}">
+                        <button>Chat</button>
+                    </a>
+                </div>
+            {% endfor %}
+        {% endif %}
     </div>
-
-    <div id="input-container">
-        <input type="text" id="message" placeholder="Enter a reply..." autocomplete="off" />
-        <button id="send_button">Send Reply</button>
-    </div>
-
-    <a href="{{ url_for('logout') }}">Logout</a>
-
-    <script>
-        var socket = io.connect('http://127.0.0.1:5000');
-
-        let selectedMessageId = null;
-
-        // Handle sending a reply
-        document.getElementById('send_button').onclick = function() {
-            var message = document.getElementById('message').value.trim();
-            if (message !== "" && selectedMessageId !== null) {
-                socket.emit('send_reply', { message_id: selectedMessageId, reply: message });
-                document.getElementById('message').value = '';
-                selectedMessageId = null;
-            }
-        };
-
-        // Listen for new messages
-        socket.on('new_message', function(data) {
-            const messageContainer = document.getElementById('messages');
-            const newMessage = document.createElement('div');
-            newMessage.classList.add('message', 'receiver');
-            newMessage.setAttribute('data-id', data.message_id);
-            newMessage.innerHTML = `
-                <strong>${data.username}:</strong><br>
-                ${data.message}
-                <div class="admin-reply-container" id="reply-${data.message_id}"></div>
-                <button class="reply-btn">Reply</button>
-            `;
-            messageContainer.appendChild(newMessage);
-            messageContainer.scrollTop = messageContainer.scrollHeight;
-
-            // Add click event listener to the new reply button
-            newMessage.querySelector('.reply-btn').addEventListener('click', function() {
-                selectedMessageId = newMessage.dataset.id;
-                document.getElementById('message').value = `Replying to: ${data.username}`;
-            });
-        });
-
-        // Listen for new admin replies
-        socket.on('new_reply', function(data) {
-            const messageElement = document.querySelector(`[data-id="${data.message_id}"]`);
-            if (messageElement) {
-                const existingReply = messageElement.querySelector('.admin-reply');
-                if (existingReply) {
-                    existingReply.remove();
-                }
-
-                const adminReply = document.createElement('div');
-                adminReply.classList.add('admin-reply');
-                adminReply.innerHTML = `<strong>Admin Reply:</strong><br>${data.reply}`;
-                const replyContainer = messageElement.querySelector('.admin-reply-container');
-                replyContainer.appendChild(adminReply);
-
-                document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
-            }
-        });
-
-        // Add click event listeners to existing reply buttons
-        document.querySelectorAll('.reply-btn').forEach(function(button) {
-            button.addEventListener('click', function() {
-                const messageElement = this.closest('.message');
-                selectedMessageId = messageElement.dataset.id;
-                document.getElementById('message').value = `Replying to: ${messageElement.querySelector('strong').innerText}`;
-            });
-        });
-    </script>
 </body>
 </html>

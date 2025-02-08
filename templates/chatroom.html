@@ -1,10 +1,191 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>$Title$</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard</title>
+    <script src="https://cdn.socket.io/4.0.1/socket.io.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            margin: 0;
+        }
+
+        #messages {
+            flex-grow: 1;
+            display: grid;
+            grid-template-columns: 1fr;
+            grid-gap: 15px;
+            padding: 20px;
+            background-color: #ffffff;
+            border-radius: 10px;
+            margin: 20px;
+            overflow-y: auto;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            height: 75%;
+            /* Scrollbar styling */
+            overflow-y: auto;
+        }
+
+        .message {
+            display: inline-block;
+            max-width: 70%;
+            padding: 12px;
+            border-radius: 15px;
+            font-size: 16px;
+            margin-bottom: 15px;
+            position: relative;
+        }
+
+        .sender {
+            background-color: #25D366;
+            color: white;
+            align-self: flex-start;
+            border-top-left-radius: 0;
+            border-bottom-right-radius: 0;
+        }
+
+        .receiver {
+            background-color: #e1e1e1;
+            color: black;
+            align-self: flex-end;
+            border-top-right-radius: 0;
+            border-bottom-left-radius: 0;
+        }
+
+        .admin-reply {
+            margin-top: 10px;
+            padding: 10px;
+            font-size: 14px;
+            color: #4d4d4d;
+            background-color: #d6d6d6;
+            border-radius: 10px;
+        }
+
+        #input-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px 20px;
+            background-color: #fff;
+            border-top: 1px solid #ddd;
+        }
+
+        input[type="text"] {
+            width: 80%;
+            padding: 10px;
+            font-size: 16px;
+            border-radius: 20px;
+            border: 1px solid #ccc;
+        }
+
+        button {
+            padding: 10px;
+            background-color: #25D366;
+            color: white;
+            border: none;
+            border-radius: 20px;
+            cursor: pointer;
+            margin-left: 10px;
+        }
+
+        a {
+            font-size: 14px;
+            color: #25D366;
+            text-decoration: none;
+            margin-left: 20px;
+        }
+
+        #messages::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        #messages::-webkit-scrollbar-thumb {
+            background: #ccc;
+            border-radius: 4px;
+        }
+
+        /* Responsive design */
+        @media (max-width: 768px) {
+            #messages {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
 </head>
 <body>
-$END$
+    <h2 style="text-align: center; color: #25D366; margin-top: 20px;">Welcome, {{ username }}!</h2>
+
+      <div id="messages">
+        {% for message in messages %}
+            <div class="message {% if message.user_id == current_user.id %}sender{% else %}receiver{% endif %}" data-id="{{ message.id }}">
+                <strong>{{ message.user.username }}:</strong><br>
+                {{ message.message }}
+                {% if message.admin_reply %}
+                    <div class="admin-reply">
+                        <strong>Admin Reply:</strong><br>{{ message.admin_reply }}
+                    </div>
+                {% endif %}
+            </div>
+        {% endfor %}
+    </div>
+
+    <div id="input-container">
+        <input type="text" id="message" placeholder="Type a message..." autocomplete="off" />
+        <button id="send_button">Send</button>
+    </div>
+
+    <a href="{{ url_for('logout') }}">Logout</a>
+
+    <script>
+        var socket = io.connect('http://127.0.0.1:5000');
+
+        // Handle sending a message
+        document.getElementById('send_button').onclick = function() {
+            var message = document.getElementById('message').value.trim();
+            if (message !== "") {
+                socket.emit('send_message', { message: message });
+                document.getElementById('message').value = '';
+            }
+        };
+
+        // Listen for new messages
+        socket.on('new_message', function(data) {
+            const messageContainer = document.getElementById('messages');
+            const newMessage = document.createElement('div');
+            newMessage.classList.add('message', data.username === "{{ username }}" ? "sender" : "receiver");
+            newMessage.setAttribute('data-id', data.message_id);
+            newMessage.innerHTML = `
+                <strong>${data.username}:</strong><br>
+                ${data.message}
+                <div class="admin-reply-container" id="reply-${data.message_id}"></div>
+            `;
+            messageContainer.appendChild(newMessage);
+            messageContainer.scrollTop = messageContainer.scrollHeight;
+        });
+
+        // Listen for new admin replies
+        socket.on('new_reply', function(data) {
+            const messageElement = document.querySelector(`[data-id="${data.message_id}"]`);
+            if (messageElement) {
+                const existingReply = messageElement.querySelector('.admin-reply');
+                if (existingReply) {
+                    existingReply.remove();
+                }
+
+                const adminReply = document.createElement('div');
+                adminReply.classList.add('admin-reply');
+                adminReply.innerHTML = `<strong>Admin Reply:</strong><br>${data.reply}`;
+                const replyContainer = messageElement.querySelector('.admin-reply-container');
+                replyContainer.appendChild(adminReply);
+
+                document.getElementById('messages').scrollTop = document.getElementById('messages').scrollHeight;
+            }
+        });
+    </script>
 </body>
 </html>

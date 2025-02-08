@@ -1,10 +1,148 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>$Title$</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chat</title>
+    <script src="https://cdn.socket.io/4.0.1/socket.io.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f5f5f5;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        #messages {
+            flex-grow: 1;
+            padding: 20px;
+            overflow-y: auto;
+            background-color: #fff;
+            border-radius: 10px;
+            margin: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        .message {
+            margin-bottom: 15px;
+            padding: 10px;
+            border-radius: 10px;
+            max-width: 70%;
+            position: relative;
+            word-wrap: break-word;
+        }
+        .sender {
+            background-color: #25D366;
+            color: white;
+            margin-left: auto;
+            text-align: right;
+        }
+        .receiver {
+            background-color: #e1e1e1;
+            color: black;
+            margin-right: auto;
+            text-align: left;
+        }
+        .message small {
+            display: block;
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+        }
+        #input-container {
+            display: flex;
+            padding: 10px 20px;
+            background-color: #fff;
+            border-top: 1px solid #ddd;
+        }
+        #input-container input {
+            flex-grow: 1;
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 20px;
+            font-size: 16px;
+        }
+        #input-container button {
+            padding: 10px 20px;
+            background-color: #25D366;
+            color: white;
+            border: none;
+            border-radius: 20px;
+            margin-left: 10px;
+            cursor: pointer;
+        }
+    </style>
 </head>
 <body>
-$END$
+    <h2 style="text-align: center; color: #25D366; margin-top: 20px;">Chat for Complaint: {{ request.complaint.title }}</h2>
+
+<div id="messages">
+    {% for message in messages %}
+        {% set is_sender = (message.user_id == current_user.id) %}
+        <div class="message {{ 'sender' if is_sender else 'receiver' }}" data-user-id="{{ message.user_id }}">
+            <strong>{% if message.user.is_admin %}Admin{% else %}{{ message.user.username }}{% endif %}:</strong>
+            {{ message.message }}
+            <small>{{ message.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</small>
+        </div>
+    {% endfor %}
+</div>
+
+
+    <div id="input-container">
+        <input type="text" id="message" placeholder="Type a message..." autocomplete="off" />
+        <button id="send_button">Send</button>
+    </div>
+
+    <script>
+        var socket = io.connect('http://127.0.0.1:5000');
+        const requestId = {{ request.id }};
+        const currentUserId = {{ current_user.id }};
+
+        // Join the room
+        socket.emit('join_room', { request_id: requestId });
+
+              window.onload = function() {
+            document.querySelectorAll('.message').forEach(msg => {
+                let userId = msg.getAttribute('data-user-id');
+                if (parseInt(userId) === currentUserId) {
+                    msg.classList.add('sender');
+                    msg.classList.remove('receiver');
+                } else {
+                    msg.classList.add('receiver');
+                    msg.classList.remove('sender');
+                }
+            });
+        };
+
+        // Handle sending a message
+        document.getElementById('send_button').onclick = function() {
+            var message = document.getElementById('message').value.trim();
+            if (message !== "") {
+                socket.emit('send_message', { request_id: requestId, message: message });
+                document.getElementById('message').value = '';
+            }
+        };
+
+       socket.on('new_message', function(data) {
+        const messageContainer = document.getElementById('messages');
+        const newMessage = document.createElement('div');
+
+        // Check if the message sender is the current user
+        const isSender = data.user_id === currentUserId;
+        newMessage.classList.add('message', isSender ? 'sender' : 'receiver');
+
+        // Populate message content
+        newMessage.innerHTML = `
+            <strong>${data.is_admin ? "Admin" : data.username}:</strong> ${data.message}
+            <small>${data.timestamp}</small>
+        `;
+
+        // Append the message to the chat
+        messageContainer.appendChild(newMessage);
+        messageContainer.scrollTop = messageContainer.scrollHeight; // Auto-scroll to the latest message
+    });
+
+    </script>
 </body>
 </html>
