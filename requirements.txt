@@ -138,7 +138,9 @@ python-dotenv==1.0.1
 python-json-logger==3.2.1
 python-multipart==0.0.9
 pytz==2025.1
+pywin32==308
 pywin32-ctypes==0.2.3
+pywinpty==2.0.15
 PyYAML==6.0.1
 pyzmq==26.2.0
 readme_renderer==44.0
@@ -167,10 +169,6 @@ stack-data==0.6.3
 sympy==1.13.2
 tensorboard==2.18.0
 tensorboard-data-server==0.7.2
-tensorflow==2.18.0
-tensorflow-hub==0.16.1
-tensorflow_intel==2.18.0
-tensorflow_object_detection_api==0.1.1
 termcolor==2.5.0
 terminado==0.18.1
 tf-slim==1.1.0
