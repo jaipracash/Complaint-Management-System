@@ -105,7 +105,7 @@ nest-asyncio==1.6.0
 nh3==0.2.20
 notebook==7.3.2
 notebook_shim==0.2.4
-numpy==1.20.0
+numpy>=1.26.4
 opencv-python==4.10.0.84
 opencv-python-headless==4.11.0.86
 opt_einsum==3.4.0
@@ -138,7 +138,7 @@ python-dotenv==1.0.1
 python-json-logger==3.2.1
 python-multipart==0.0.9
 pytz==2025.1
-pywin32==308
+pywin32>=306
 pywin32-ctypes==0.2.3
 pywinpty==2.0.14
 PyYAML==6.0.1
