@@ -4,13 +4,69 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard</title>
-    <style>
+ <style>
         body {
             font-family: Arial, sans-serif;
             margin: 0;
             padding: 0;
             display: flex;
             height: 100vh;
+            background-color: #f5f5f5;
+        }
+        .request button.approve-btn {
+        background-color: #25D366;
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: background-color 0.3s;
+        }
+
+        .request button.approve-btn:hover {
+            background-color: #128C7E;
+        }
+
+        .request button.decline-btn {
+            background-color: #e74c3c;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .request button.decline-btn:hover {
+            background-color: #c0392b;
+        }
+
+        .request button.chat-btn {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .request button.chat-btn:hover {
+            background-color: #2980b9;
+        }
+
+        .request button.close-btn {
+            background-color: #e67e22;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .request button.close-btn:hover {
+            background-color: #d35400;
         }
         .sidebar {
             width: 250px;
@@ -20,9 +76,12 @@
             display: flex;
             flex-direction: column;
             justify-content: space-between;
+            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
         }
         .sidebar h2 {
             margin-top: 0;
+            font-size: 24px;
+            font-weight: 600;
         }
         .sidebar ul {
             list-style: none;
@@ -35,9 +94,13 @@
             color: white;
             text-decoration: none;
             font-size: 18px;
+            display: block;
+            padding: 10px;
+            border-radius: 4px;
+            transition: background-color 0.3s;
         }
         .sidebar ul li a:hover {
-            text-decoration: underline;
+            background-color: #34495e;
         }
         .sidebar .logout-btn {
             background-color: #e74c3c;
@@ -48,6 +111,7 @@
             cursor: pointer;
             text-align: center;
             font-size: 16px;
+            transition: background-color 0.3s;
         }
         .sidebar .logout-btn:hover {
             background-color: #c0392b;
@@ -55,7 +119,7 @@
         .main-content {
             flex: 1;
             padding: 20px;
-            background-color: #f5f5f5;
+            overflow-y: auto;
         }
         .app-bar {
             display: flex;
@@ -63,20 +127,35 @@
             align-items: center;
             background-color: #34495e;
             color: white;
-            padding: 10px 20px;
+            padding: 15px 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
         }
         .app-bar h2 {
             margin: 0;
+            font-size: 22px;
+            font-weight: 500;
         }
         .request {
             background-color: white;
-            padding: 15px;
-            margin-bottom: 10px;
+            padding: 20px;
+            margin-bottom: 15px;
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .request:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
         }
         .request h3 {
             margin-top: 0;
+            font-size: 20px;
+            color: #2c3e50;
+        }
+        .request p {
+            margin: 10px 0;
+            color: #555;
         }
         .request button {
             background-color: #25D366;
@@ -85,6 +164,7 @@
             padding: 8px 16px;
             border-radius: 4px;
             cursor: pointer;
+            transition: background-color 0.3s;
         }
         .request button:hover {
             background-color: #128C7E;
@@ -93,6 +173,10 @@
             width: 100%;
             border-collapse: collapse;
             margin-top: 20px;
+            background-color: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
         .user-table th, .user-table td {
             padding: 12px;
@@ -102,6 +186,7 @@
         .user-table th {
             background-color: #34495e;
             color: white;
+            font-weight: 500;
         }
         .user-table tr:hover {
             background-color: #f1f1f1;
@@ -113,9 +198,20 @@
             padding: 6px 12px;
             border-radius: 4px;
             cursor: pointer;
+            transition: background-color 0.3s;
         }
         .user-table button:hover {
             background-color: #2980b9;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #777;
+            font-size: 18px;
+        }
+        .empty-state img {
+            width: 100px;
+            margin-bottom: 20px;
         }
     </style>
 </head>
@@ -143,15 +239,25 @@
         <!-- Dynamic Content -->
         {% if pending %}
             <h3>Pending Requests</h3>
-            {% for req in requests %}
-                <div class="request">
-                    <h3>Complaint: {{ req.complaint.title }}</h3>
-                    <p>User: {{ req.user.username }}</p>
-                    <form action="{{ url_for('approve_request', request_id=req.id) }}" method="POST">
-                        <button type="submit">Approve Request</button>
-                    </form>
+            {% if requests %}
+                {% for req in requests %}
+                    <div class="request">
+                        <h3>Complaint: {{ req.complaint.title }}</h3>
+                        <p>User: {{ req.user.username }}</p>
+                        <form action="{{ url_for('approve_request', request_id=req.id) }}" method="POST" style="display: inline;">
+                            <button type="submit" class="approve-btn">Approve Request</button>
+                        </form>
+                        <form action="{{ url_for('decline_request', request_id=req.id) }}" method="POST" style="display: inline;">
+                            <button type="submit" class="decline-btn">Decline Request</button>
+                        </form>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div class="empty-state">
+                    <img src="https://cdn-icons-png.flaticon.com/512/4076/4076406.png" alt="No Pending Requests">
+                    <p>No pending requests found.</p>
                 </div>
-            {% endfor %}
+            {% endif %}
         {% elif show_users %}
             <h3>All Users</h3>
             <table class="user-table">
@@ -206,15 +312,25 @@
             </table>
         {% else %}
             <h3>Approved Requests</h3>
-            {% for req in requests %}
-                <div class="request">
-                    <h3>Complaint: {{ req.complaint.title }}</h3>
-                    <p>User: {{ req.user.username }}</p>
-                    <a href="{{ url_for('chat', request_id=req.id) }}">
-                        <button>Chat</button>
-                    </a>
+            {% if requests %}
+                {% for req in requests %}
+                    <div class="request">
+                        <h3>Complaint: {{ req.complaint.title }}</h3>
+                        <p>User: {{ req.user.username }}</p>
+                        <a href="{{ url_for('chat', request_id=req.id) }}">
+                            <button class="chat-btn">Chat</button>
+                        </a>
+                        <form action="{{ url_for('close_room', request_id=req.id) }}" method="POST" style="display: inline;">
+                            <button type="submit" class="close-btn">Close Room</button>
+                        </form>
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div class="empty-state">
+                    <img src="https://cdn-icons-png.flaticon.com/512/4076/4076406.png" alt="No Approved Requests">
+                    <p>No approved requests found.</p>
                 </div>
-            {% endfor %}
+            {% endif %}
         {% endif %}
     </div>
 </body>
