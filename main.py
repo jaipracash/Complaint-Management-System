@@ -5,11 +5,23 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from flask_socketio import SocketIO, emit, join_room
 import os
+from flask import flash, redirect, url_for, session
+
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY', 'your_secret_key')
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://jai:admin123@127.0.0.1:3306/common_contributions_tracker'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+DB_USERNAME = "uds67epwmwjx6izv"
+DB_PASSWORD = "mDHWTFY3FcYCpLsDAq1V"
+DB_HOST = "birtrviqdlzckt1cjhp2-mysql.services.clever-cloud.com"
+DB_NAME = "birtrviqdlzckt1cjhp2"
+DB_PORT = 3306  # MySQL default port
+
+app.config["SQLALCHEMY_DATABASE_URI"] = f"mysql+pymysql://{DB_USERNAME}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+
+
+# app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://jai:admin123@127.0.0.1:3306/common_contributions_tracker'
+# app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
 socketio = SocketIO(app, cors_allowed_origins="*")
@@ -67,13 +79,15 @@ def user_approved_requests():
 class Message(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     request_id = db.Column(db.Integer, db.ForeignKey('request.id'), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False)  # Add ondelete='CASCADE'
     message = db.Column(db.Text, nullable=False)
     admin_reply = db.Column(db.Text, nullable=True)
     timestamp = db.Column(db.DateTime, default=db.func.current_timestamp())
 
     # Define the relationship to the User model
-    user = db.relationship('User', backref='messages')
+    user = db.relationship('User', backref=db.backref('messages', cascade="all, delete"))
+
+
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
@@ -91,9 +105,18 @@ def request_status():
     requests = Request.query.all()  # Modify this as per your database query
     return render_template('user_dashboard.html', show_requests=True, requests=requests)
 
+# Load user for Flask-Login
+@login_manager.user_loader
+def load_user(user_id):
+    return db.session.get(User, int(user_id))
+
+# Route to view all users
 @app.route('/view_all_users')
 @login_required
 def view_all_users():
+    if current_user.is_admin != True:
+        flash("You do not have permission to access this page.", "danger")
+        return redirect(url_for('admin_dashboard'))
     users = User.query.all()  # Fetch all users from the database
     return render_template('users.html', users=users)
 
@@ -253,18 +276,31 @@ def handle_reply(data):
     message_id = data['message_id']
     reply_text = data['reply']
 
-    # Save the admin reply to the database
+    # Ensure current_user is valid
+    if not current_user.is_authenticated or not current_user.id:
+        emit('error', {'message': 'User not authenticated.'})
+        return
+
+    # Fetch the message
     message = Message.query.get(message_id)
-    if message and current_user.is_admin:
-        message.admin_reply = reply_text
-        db.session.commit()
+    if not message:
+        emit('error', {'message': 'Message not found.'})
+        return
 
-        # Emit the reply to all clients in the room
-        emit('new_reply', {
-            'message_id': message_id,
-            'reply': reply_text
-        }, room=str(message.request_id))
+    # Ensure the current user is an admin
+    if not current_user.is_admin:
+        emit('error', {'message': 'You do not have permission to reply.'})
+        return
 
+    # Update the message
+    message.admin_reply = reply_text
+    db.session.commit()
+
+    # Emit the reply to all clients in the room
+    emit('new_reply', {
+        'message_id': message_id,
+        'reply': reply_text
+    }, room=str(message.request_id))
 
 @app.route('/about')
 def about():
@@ -296,6 +332,67 @@ def register():
         return redirect(url_for('login'))
 
     return render_template('register.html')
+
+@app.route('/promote_admin/<int:user_id>', methods=['POST'])
+@login_required
+def promote_admin(user_id):
+    if current_user.is_admin != True:
+        flash("You do not have permission to perform this action.", "danger")
+        return redirect(url_for('admin_dashboard'))
+    user = db.session.get(User, user_id)
+    if user and user.is_admin != True:
+        user.is_admin = True
+        db.session.commit()
+        flash(f"{user.username} is now an admin.", "success")
+    return redirect(url_for('view_all_users'))
+
+# Route to delete a user
+@app.route('/delete_user/<int:user_id>', methods=['POST'])
+@login_required
+def delete_user(user_id):
+    if current_user.is_admin != True:
+        flash("You do not have permission to perform this action.", "danger")
+        return redirect(url_for('admin_dashboard'))
+
+    user = db.session.get(User, user_id)
+    if user:
+        # Delete all messages associated with the user
+        Message.query.filter_by(user_id=user.id).delete()
+
+        # Delete the user
+        db.session.delete(user)
+        db.session.commit()
+        flash(f"{user.username} has been deleted.", "danger")
+    return redirect(url_for('view_all_users'))
+@app.route('/close_room/<int:request_id>', methods=['POST'])
+@login_required
+def close_room(request_id):
+    if not current_user.is_admin:
+        flash("You do not have permission to perform this action.", "danger")
+        return redirect(url_for('admin_dashboard'))
+
+    req = Request.query.get(request_id)
+    if req:
+        req.status = 'closed'  # Update status to 'closed'
+        db.session.commit()
+        flash('Room closed successfully!', 'success')
+    return redirect(url_for('approved_requests'))
+
+@app.route('/decline_request/<int:request_id>', methods=['POST'])
+@login_required
+def decline_request(request_id):
+    if not current_user.is_admin:
+        flash("You do not have permission to perform this action.", "danger")
+        return redirect(url_for('admin_dashboard'))
+
+    req = Request.query.get(request_id)
+    if req:
+        req.status = 'declined'  # Update status to 'declined'
+        db.session.commit()
+        flash('Request declined successfully!', 'danger')
+    return redirect(url_for('admin_dashboard'))
+
+
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
