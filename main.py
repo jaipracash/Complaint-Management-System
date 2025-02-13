@@ -359,7 +359,6 @@ def delete_user(user_id):
         # Delete all messages associated with the user
         Message.query.filter_by(user_id=user.id).delete()
 
-        # Delete the user
         db.session.delete(user)
         db.session.commit()
         flash(f"{user.username} has been deleted.", "danger")
